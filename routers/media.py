@@ -8,7 +8,7 @@ import os
 import time
 from database import get_db
 from .auth import get_current_user
-from models import User
+from models import User, MediaFile
 
 router = APIRouter()
 
@@ -73,8 +73,24 @@ async def upload_media(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-    # Return file URL
-    return {"url": f"/static/media/{unique_filename}"}
+    # Create MediaFile record
+    media_file = MediaFile(
+        filename=file.filename,
+        file_path=f"/static/media/{unique_filename}",
+        file_type=file_ext.lstrip('.'),
+        uploader_id=current_user.id
+    )
+    db.add(media_file)
+    await db.commit()
+    await db.refresh(media_file)
+    
+    # Return file information
+    return {
+        "id": media_file.id,
+        "url": media_file.file_path,
+        "filename": media_file.filename,
+        "file_type": media_file.file_type
+    }
 
 @router.get("/files")
 async def list_media_files(
@@ -82,3 +98,27 @@ async def list_media_files(
 ) -> List[str]:
     files = [f for f in MEDIA_DIR.iterdir() if f.is_file()]
     return [f"/static/media/{f.name}" for f in files]
+
+@router.post("/attach/{article_id}")
+async def attach_media_to_article(
+    article_id: int,
+    media_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Get the article and media file
+    article = await db.get(Article, article_id)
+    media_file = await db.get(MediaFile, media_id)
+    
+    if not article or not media_file:
+        raise HTTPException(status_code=404, detail="Article or media file not found")
+    
+    # Check if user owns the article
+    if article.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this article")
+    
+    # Add media file to article
+    article.media_files.append(media_file)
+    await db.commit()
+    
+    return {"message": "Media file attached successfully"}

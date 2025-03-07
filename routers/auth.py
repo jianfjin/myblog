@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
+from fastapi.responses import RedirectResponse
 
 # Setup templates
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
@@ -94,15 +95,16 @@ async def signup_page(request: Request):
     )
 
 @router.post("/signup", response_model=dict)
-async def signup(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def signup(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     # Check if user already exists
     query = select(User).where(User.username == form_data.username)
     result = await db.execute(query)
     if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+        response = RedirectResponse(
+            url="/auth/login",
+            status_code=status.HTTP_303_SEE_OTHER
         )
+        return response
     
     # Create new user
     hashed_password = get_password_hash(form_data.password)
@@ -115,7 +117,29 @@ async def signup(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSess
     await db.commit()
     await db.refresh(new_user)
     
-    return {"message": "User created successfully"}
+    # Create access token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": new_user.username}, expires_delta=access_token_expires
+    )
+    
+    # Create response with token in cookie and redirect
+    response = templates.TemplateResponse(
+        "articles/list.html",
+        {"request": request, "current_user": new_user}
+    )
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        secure=True,
+        samesite="lax"
+    )
+    response.status_code = status.HTTP_303_SEE_OTHER
+    response.headers["Location"] = "/articles"
+    
+    return response
 
 @router.get("/logout")
 async def logout(request: Request):
