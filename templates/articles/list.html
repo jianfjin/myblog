@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Articles</h1>
+        <a href="/articles/new" class="btn btn-primary">Write New Article</a>
+    </div>
+
+    <div class="row">
+        {% for article in articles %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="card-title h5">{{ article.title }}</h2>
+                    <p class="card-text text-muted small">By {{ article.author.username }} on {{ article.created_at.strftime('%B %d, %Y') }}</p>
+                    <div class="card-text mb-3">{{ article.content | truncate(200) }}</div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="/articles/{{ article.id }}" class="btn btn-outline-primary">Read More</a>
+                        {% if current_user and current_user.id == article.author_id %}
+                        <div class="btn-group">
+                            <a href="/articles/{{ article.id }}/edit" class="btn btn-outline-secondary">Edit</a>
+                            <button onclick="deleteArticle({{ article.id }})" class="btn btn-outline-danger">Delete</button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <p class="text-center">No articles yet. Be the first to write one!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function deleteArticle(articleId) {
+    if (confirm('Are you sure you want to delete this article?')) {
+        fetch(`/articles/${articleId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to delete the article');
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while deleting the article');
+        });
+    }
+}
+</script>
+{% endblock %}

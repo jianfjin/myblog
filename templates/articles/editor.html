@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ title }}</h1>
+    <form id="articleForm" class="mt-4" method="POST" action="/articles{{ '' if not article else '/' + article.id|string }}">
+        <div class="mb-3">
+            <label for="title" class="form-label">Title</label>
+            <input type="text" class="form-control" id="title" name="title" required value="{{ article.title if article else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="content" class="form-label">Content</label>
+            <textarea id="content" name="content">{{ article.content if article else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Upload Media</label>
+            <div class="input-group">
+                <input type="file" class="form-control" id="mediaUpload" accept=".jpg,.jpeg,.png,.gif,.webp,.mp3,.wav,.ogg,.m4a,.mp4,.webm">
+                <button type="button" class="btn btn-secondary" id="uploadButton">Upload</button>
+            </div>
+            <div id="uploadProgress" class="progress mt-2 d-none">
+                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+            </div>
+            <small class="text-muted">Supported files: Images (jpg, jpeg, png, gif, webp), Audio (mp3, wav, ogg, m4a), Video (mp4, webm, ogg)</small>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Article</button>
+        <a href="/articles" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+<script>
+// Initialize EasyMDE
+const easyMDE = new EasyMDE({
+    element: document.getElementById('content'),
+    spellChecker: false,
+    autosave: {
+        enabled: true,
+        delay: 1000,
+        uniqueId: 'article-editor'
+    }
+});
+
+// Handle media upload
+document.getElementById('uploadButton').addEventListener('click', async function() {
+    const fileInput = document.getElementById('mediaUpload');
+    const file = fileInput.files[0];
+    if (!file) {
+        alert('Please select a file to upload');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const progressBar = document.querySelector('#uploadProgress');
+    const progressBarInner = progressBar.querySelector('.progress-bar');
+    progressBar.classList.remove('d-none');
+    progressBarInner.style.width = '0%';
+
+    try {
+        const response = await fetch('/media/upload', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const fileUrl = data.url;
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            
+            let markdownInsert = '';
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt)) {
+                markdownInsert = `![${file.name}](${fileUrl})`;
+            } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(fileExt)) {
+                markdownInsert = `<audio controls src="${fileUrl}"></audio>`;
+            } else if (['mp4', 'webm'].includes(fileExt)) {
+                markdownInsert = `<video controls src="${fileUrl}"></video>`;
+            }
+
+            const currentContent = easyMDE.value();
+            const cursorPosition = easyMDE.codemirror.getCursor();
+            const newContent = currentContent.slice(0, cursorPosition.ch) + markdownInsert + currentContent.slice(cursorPosition.ch);
+            easyMDE.value(newContent);
+
+            fileInput.value = '';
+            progressBar.classList.add('d-none');
+            progressBarInner.style.width = '0%';
+        } else {
+            const error = await response.json();
+            alert(error.detail || 'Failed to upload file');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while uploading the file');
+    } finally {
+        progressBar.classList.add('d-none');
+        progressBarInner.style.width = '0%';
+    }
+});
+
+// Handle form submission
+document.getElementById('articleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    // Update the content field with the EasyMDE value before submitting
+    document.getElementById('content').value = easyMDE.value();
+    
+    const form = e.target;
+    const isEdit = form.action.includes('/');
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    const formData = new FormData(form);
+    
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...(method === 'PUT' ? { 'X-HTTP-Method-Override': 'PUT' } : {})
+        },
+        body: JSON.stringify(Object.fromEntries(formData))
+    }).then(response => {
+        if (response.ok) {
+            window.location.href = '/articles';
+        } else {
+            response.json().then(data => {
+                alert(data.detail || 'Failed to save the article');
+            }).catch(() => {
+                alert('Failed to save the article');
+            });
+        }
+    }).catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while saving the article');
+    });
+});
+</script>
+{% endblock %}
