@@ -5,10 +5,10 @@ from datetime import datetime
 Base = declarative_base()
 
 # Association table for Article-MediaFile relationship
-article_media = Table(
-    'article_media',
+card_media = Table(
+    'card_media',
     Base.metadata,
-    Column('article_id', Integer, ForeignKey('articles.id')),
+    Column('card_id', Integer, ForeignKey('cards.id')),
     Column('media_id', Integer, ForeignKey('media_files.id'))
 )
 
@@ -20,10 +20,10 @@ class User(Base):
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(100))
     created_at = Column(DateTime, default=datetime.utcnow)
-    articles = relationship("Article", back_populates="author")
+    cards = relationship("Card", back_populates="author")
 
-class Article(Base):
-    __tablename__ = "articles"
+class Card(Base):
+    __tablename__ = "cards"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200))
@@ -31,8 +31,8 @@ class Article(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     author_id = Column(Integer, ForeignKey("users.id"))
-    author = relationship("User", back_populates="articles")
-    media_files = relationship("MediaFile", secondary=article_media, back_populates="articles")
+    author = relationship("User", back_populates="cards")
+    media_files = relationship("MediaFile", secondary=card_media, back_populates="cards")
 
 class MediaFile(Base):
     __tablename__ = "media_files"
@@ -44,4 +44,4 @@ class MediaFile(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     uploader_id = Column(Integer, ForeignKey("users.id"))
     uploader = relationship("User")
-    articles = relationship("Article", secondary=article_media, back_populates="media_files")
+    cards = relationship("Card", secondary=card_media, back_populates="media_files")

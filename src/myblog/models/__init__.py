@@ -1,1 +1,1 @@
-from .models import Base, User, MediaFile, Article
+from .models import Base, User, MediaFile, Card

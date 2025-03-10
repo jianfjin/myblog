@@ -7,8 +7,8 @@ import shutil
 import os
 import time
 from myblog.database import get_db
-from myblog.auth import get_current_user
-from myblog.models import User, MediaFile
+from myblog.routers.auth import get_current_user
+from myblog.models import User, MediaFile, Card
 
 router = APIRouter()
 
@@ -99,26 +99,26 @@ async def list_media_files(
     files = [f for f in MEDIA_DIR.iterdir() if f.is_file()]
     return [f"/static/media/{f.name}" for f in files]
 
-@router.post("/attach/{article_id}")
-async def attach_media_to_article(
-    article_id: int,
+@router.post("/attach/{card_id}")
+async def attach_media_to_card(
+    card_id: int,
     media_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Get the article and media file
-    article = await db.get(Article, article_id)
+    # Get the card and media file
+    card = await db.get(Card, card_id)
     media_file = await db.get(MediaFile, media_id)
     
-    if not article or not media_file:
-        raise HTTPException(status_code=404, detail="Article or media file not found")
+    if not card or not media_file:
+        raise HTTPException(status_code=404, detail="Card or media file not found")
     
-    # Check if user owns the article
-    if article.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to modify this article")
+    # Check if user owns the card
+    if card.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this card")
     
-    # Add media file to article
-    article.media_files.append(media_file)
+    # Add media file to card
+    card.media_files.append(media_file)
     await db.commit()
     
     return {"message": "Media file attached successfully"}

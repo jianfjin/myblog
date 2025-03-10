@@ -42,10 +42,10 @@ async def home(request: Request, current_user: User | None = Depends(get_current
     )
 
 # Include routers
-from myblog.routers import auth, articles
+from myblog.routers import auth, cards
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(articles.router, prefix="/articles", tags=["articles"])
+app.include_router(cards.router, prefix="/cards", tags=["cards"])
 
 if __name__ == "__main__":
     import uvicorn

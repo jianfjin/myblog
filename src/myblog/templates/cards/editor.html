@@ -3,14 +3,14 @@
 {% block content %}
 <div class="container">
     <h1>{{ title }}</h1>
-    <form id="articleForm" class="mt-4" method="POST" action="/articles{{ '' if not article else '/' + article.id|string }}">
+    <form id="cardForm" class="mt-4" method="POST" action="/cards{{ '' if not card else '/' + card.id|string }}">
         <div class="mb-3">
             <label for="title" class="form-label">Title</label>
-            <input type="text" class="form-control" id="title" name="title" required value="{{ article.title if article else '' }}">
+            <input type="text" class="form-control" id="title" name="title" required value="{{ card.title if card else '' }}">
         </div>
         <div class="mb-3">
             <label for="content" class="form-label">Content</label>
-            <textarea id="content" name="content">{{ article.content if article else '' }}</textarea>
+            <textarea id="content" name="content">{{ card.content if card else '' }}</textarea>
         </div>
         <div class="mb-3">
             <label class="form-label">Upload Media</label>
@@ -23,8 +23,8 @@
             </div>
             <small class="text-muted">Supported files: Images (jpg, jpeg, png, gif, webp), Audio (mp3, wav, ogg, m4a), Video (mp4, webm, ogg)</small>
         </div>
-        <button type="submit" class="btn btn-primary">Save Article</button>
-        <a href="/articles" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Card</button>
+        <a href="/cards" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
 
@@ -36,7 +36,7 @@ const easyMDE = new EasyMDE({
     autosave: {
         enabled: true,
         delay: 1000,
-        uniqueId: 'article-editor'
+        uniqueId: 'card-editor'
     }
 });
 
@@ -103,7 +103,7 @@ document.getElementById('uploadButton').addEventListener('click', async function
 });
 
 // Handle form submission
-document.getElementById('articleForm').addEventListener('submit', function(e) {
+document.getElementById('cardForm').addEventListener('submit', function(e) {
     e.preventDefault();
     // Update the content field with the EasyMDE value before submitting
     document.getElementById('content').value = easyMDE.value();
@@ -124,17 +124,17 @@ document.getElementById('articleForm').addEventListener('submit', function(e) {
         body: JSON.stringify(Object.fromEntries(formData))
     }).then(response => {
         if (response.ok) {
-            window.location.href = '/articles';
+            window.location.href = '/cards';
         } else {
             response.json().then(data => {
-                alert(data.detail || 'Failed to save the article');
+                alert(data.detail || 'Failed to save the card');
             }).catch(() => {
-                alert('Failed to save the article');
+                alert('Failed to save the card');
             });
         }
     }).catch(error => {
         console.error('Error:', error);
-        alert('An error occurred while saving the article');
+        alert('An error occurred while saving the card');
     });
 });
 </script>
