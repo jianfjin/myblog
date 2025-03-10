@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from dotenv import load_dotenv
 from myblog.database import init_db
-from routers.auth import get_current_user
+from myblog.routers.auth import get_current_user
 from myblog.models import User
 
 # Load environment variables
@@ -29,7 +29,7 @@ async def startup_event():
     await init_db()
 
 # Setup static files and templates
-BASE_DIR = Path(__file__).resolve().parent / "myblog" / "src" / "myblog"
+BASE_DIR = Path(__file__).resolve().parent / "src" / "myblog"
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 

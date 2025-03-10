@@ -12,8 +12,8 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from typing import Optional
-from database import get_db
-from models import User
+from myblog.database import get_db
+from myblog.models import User
 import os
 
 router = APIRouter()

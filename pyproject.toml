@@ -3,7 +3,6 @@ name = "myblog"
 version = "0.1.0"
 description = "A FastAPI-based blog application"
 authors = ["Your Name <your.email@example.com>"]
-packages = [{include = "myblog"}]
 
 [tool.poetry.dependencies]
 python = "^3.8"

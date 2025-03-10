@@ -6,9 +6,9 @@ from typing import List
 import shutil
 import os
 import time
-from database import get_db
-from .auth import get_current_user
-from models import User, MediaFile
+from myblog.database import get_db
+from myblog.auth import get_current_user
+from myblog.models import User, MediaFile
 
 router = APIRouter()
 
