@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -6,8 +7,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 from myblog.database import get_db  # Replace with your actual import
 from myblog.models import User  # Replace with your actual import
-from myblog.routers.auth import router as auth_router  # Replace with your actual import
-import asyncio
+from myblog.routers.auth import (router as auth_router, get_password_hash, create_access_token, login, login_page, logout, verify_password, 
+                                 signup_page, signup, get_current_user,  # Replace with your actual import
+                                 SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES)  # Replace with your actual import
+
 
 # Test database configuration
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
