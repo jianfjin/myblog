@@ -14,3 +14,4 @@ greenlet==3.0.1
 pytest==7.4.3
 httpx==0.23.0
 pytest-acyncio==0.25.3
+itsdangerous==2.2.0

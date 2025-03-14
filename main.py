@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from myblog.database import init_db
 from myblog.routers.auth import get_current_user
 from myblog.models import User
+from starlette.middleware.sessions import SessionMiddleware
 
 # Load environment variables
 load_dotenv()
@@ -22,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add session middleware
+app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
 
 # Setup database initialization event
 @app.on_event("startup")
@@ -42,10 +46,13 @@ async def home(request: Request, current_user: User | None = Depends(get_current
     )
 
 # Include routers
-from myblog.routers import auth, cards
+from myblog.routers import auth, cards, media, users
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(cards.router, prefix="/cards", tags=["cards"])
+app.include_router(media.router, prefix="/media", tags=["media"])
+app.include_router(users.router, prefix="/users", tags=["users"])
+
 
 if __name__ == "__main__":
     import uvicorn

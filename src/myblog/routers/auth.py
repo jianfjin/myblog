@@ -2,9 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from fastapi.responses import RedirectResponse
-
-# Setup templates
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -13,10 +10,13 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from typing import Optional
 from myblog.database import get_db
-from myblog.models import User
+from myblog.models import User, Role
 import os
 
 router = APIRouter()
+
+# Setup templates
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 
 # Security configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
@@ -43,6 +43,42 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+async def get_current_user(request: Request = None, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    # First try to get token from cookie if request is provided
+    if request and not token:
+        cookie_authorization = request.cookies.get("access_token")
+        if cookie_authorization and cookie_authorization.startswith("Bearer "):
+            token = cookie_authorization.replace("Bearer ", "")
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": "/auth/login"}
+        )
+        
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    query = select(User).where(User.username == username)
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
+    
+    if user is None:
+        raise credentials_exception
+    return user
+
+
 # User authentication endpoints
 @router.get("/login")
 async def login_page(request: Request):
@@ -64,6 +100,9 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Store user in session
+    request.session['user_id'] = user.id
     
     # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -125,7 +164,7 @@ async def signup(request: Request, form_data: OAuth2PasswordRequestForm = Depend
     
     # Create response with token in cookie and redirect
     response = templates.TemplateResponse(
-        "articles/list.html",
+        "cards/list.html",
         {"request": request, "current_user": new_user}
     )
     response.set_cookie(
@@ -137,15 +176,18 @@ async def signup(request: Request, form_data: OAuth2PasswordRequestForm = Depend
         samesite="lax"
     )
     response.status_code = status.HTTP_303_SEE_OTHER
-    response.headers["Location"] = "/articles"
+    response.headers["Location"] = "/cards"
     
     return response
 
 @router.get("/logout")
-async def logout(request: Request):
+async def logout(request: Request, current_user: User = Depends(get_current_user)):
+    # Remove user from session
+    request.session.pop('user_id', None)
+    
     response = templates.TemplateResponse(
         "index.html",
-        {"request": request}
+        {"request": request, "current_user": None}  # Set current_user to None after logout
     )
     response.delete_cookie(key="access_token")
     return response
@@ -170,39 +212,3 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
-# Dependency to get current user
-async def get_current_user(request: Request = None, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    # First try to get token from cookie if request is provided
-    if request and not token:
-        cookie_authorization = request.cookies.get("access_token")
-        if cookie_authorization and cookie_authorization.startswith("Bearer "):
-            token = cookie_authorization.replace("Bearer ", "")
-    
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_303_SEE_OTHER,
-            headers={"Location": "/login"}
-        )
-        
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    
-    query = select(User).where(User.username == username)
-    result = await db.execute(query)
-    user = result.scalar_one_or_none()
-    
-    if user is None:
-        raise credentials_exception
-    return user

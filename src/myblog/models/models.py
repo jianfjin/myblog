@@ -1,8 +1,15 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Enum, Boolean
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
+import enum
 
 Base = declarative_base()
+
+# Define the Role Enum
+class Role(enum.Enum):
+    ADMIN = "admin"
+    DEVELOPER = "developer"
+    VIEWER = "viewer"
 
 # Association table for Article-MediaFile relationship
 card_media = Table(
@@ -20,6 +27,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(100))
     created_at = Column(DateTime, default=datetime.utcnow)
+    role = Column(Enum(Role), default=Role.VIEWER)
     cards = relationship("Card", back_populates="author")
 
 class Card(Base):
@@ -33,6 +41,7 @@ class Card(Base):
     author_id = Column(Integer, ForeignKey("users.id"))
     author = relationship("User", back_populates="cards")
     media_files = relationship("MediaFile", secondary=card_media, back_populates="cards")
+    to_all = Column(Boolean, default=False)
 
 class MediaFile(Base):
     __tablename__ = "media_files"
