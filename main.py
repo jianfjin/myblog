@@ -4,9 +4,10 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from dotenv import load_dotenv
-from database import init_db
-from routers.auth import get_current_user
-from models import User
+from myblog.database import init_db
+from myblog.routers.auth import get_current_user
+from myblog.models import User
+from starlette.middleware.sessions import SessionMiddleware
 
 # Load environment variables
 load_dotenv()
@@ -23,13 +24,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add session middleware
+app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
+
 # Setup database initialization event
 @app.on_event("startup")
 async def startup_event():
     await init_db()
 
 # Setup static files and templates
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent / "src" / "myblog"
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
@@ -42,10 +46,13 @@ async def home(request: Request, current_user: User | None = Depends(get_current
     )
 
 # Include routers
-from routers import auth, articles
+from myblog.routers import auth, cards, media, users
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(articles.router, prefix="/articles", tags=["articles"])
+app.include_router(cards.router, prefix="/cards", tags=["cards"])
+app.include_router(media.router, prefix="/media", tags=["media"])
+app.include_router(users.router, prefix="/users", tags=["users"])
+
 
 if __name__ == "__main__":
     import uvicorn
